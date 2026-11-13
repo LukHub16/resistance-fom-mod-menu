@@ -1,0 +1,1253 @@
+{
+  "game_elf_sha256": "2e007861b0c515ab4212d031e8533114fc75ee221ffbd840d0e9ff168dd3bd37",
+  "files": {
+    "project/rfom_combat_menu.h": {
+      "new": "#pragma once\n\n#include <atomic>\n\nenum class CombatMod : unsigned {\n    Health = 1u << 0,\n    Magazine = 1u << 1,\n    Reserve = 1u << 2,\n    Secondary = 1u << 3,\n    Grenades = 1u << 4,\n    RapidFire = 1u << 5,\n    ArcCooling = 1u << 6,\n    SniperFocus = 1u << 7,\n    LongerJump = 1u << 8,\n};\n\ninline std::atomic<unsigned> rfom_combat_mods{0};\n\ninline bool combat_mod_enabled(CombatMod mod)\n{\n    return (rfom_combat_mods.load(std::memory_order_relaxed) & static_cast<unsigned>(mod)) != 0;\n}\n",
+      "final_sha256": "bad8d6fd05afde722015e6ff12d4dcd6e6cc148770519ac54d46ab3b8786d16b"
+    },
+    "project/rfom_vehicle_menu.h": {
+      "new": "#pragma once\n#include \"rfom_combat_menu.h\"\n\nconstexpr auto tank_health = static_cast<CombatMod>(1u << 9);\nconstexpr auto stalker_health = static_cast<CombatMod>(1u << 10);\nconstexpr auto tank_cooling = static_cast<CombatMod>(1u << 11);\nconstexpr auto stalker_cooling = static_cast<CombatMod>(1u << 12);\n",
+      "final_sha256": "a14989b3948684eb66fcba350a2b6842e4c49983287d29c60f008bef7569b25f"
+    },
+    "project/rfom_movement_menu.h": {
+      "new": "#pragma once\n#include <cstdint>\n#include \"rfom_combat_menu.h\"\n\nconstexpr auto flight = static_cast<CombatMod>(1u << 13);\nconstexpr auto faster_walk = static_cast<CombatMod>(1u << 14);\nenum class PositionAction { None, Mark, Return };\ninline std::atomic<PositionAction> rfom_position_action{PositionAction::None};\ninline std::atomic<bool> rfom_flight_held{false};\nextern \"C\" bool rfom_movement_allowed(uint32_t player);\n\nconstexpr auto noclip = static_cast<CombatMod>(1u << 15);\nextern \"C\" bool rfom_noclip_step(uint32_t player);\n\nconstexpr auto free_camera = static_cast<CombatMod>(1u << 16);\n",
+      "final_sha256": "8185f30d33a349ad8e2a34e6e63a3b95af4418d61286a96c57e29871e702e035"
+    },
+    "project/rfom_pcextra.cpp": {
+      "base_sha256": "f323dd2af72cfe75b3e62240c8ed4999c6dd46fbd68d4b2a45b15dab9423b5f9",
+      "final_sha256": "8affcf0c7f283b1ba46c0995c167510f161327819f45ea1e7acc4a84d03c49c3",
+      "edits": [
+        [
+          45,
+          0,
+          [
+            "#include \"rfom_vehicle_menu.h\"",
+            "#include \"rfom_movement_menu.h\""
+          ]
+        ],
+        [
+          506,
+          1,
+          [
+            "enum { PG_MAIN, PG_KEYS, PG_PAD, PG_COMBAT, PG_CADENCE, PG_ARMORY };",
+            "static constexpr struct CombatRow {",
+            "    CombatMod mod;",
+            "    const wchar_t* title;",
+            "    const wchar_t* help;",
+            "} combat_rows[] = {",
+            "    {CombatMod::Health, L\"Vida infinita\", L\"Impede que o dano reduza a vida.\"},",
+            "    {CombatMod::Magazine, L\"Sem recarga\", L\"Mant\\u00e9m as balas no carregador. Se estiver vazio, recarregue uma vez.\"},",
+            "    {CombatMod::Reserve, L\"Reserva infinita\", L\"Recarregar n\\u00e3o gasta a muni\\u00e7\\u00e3o de reserva.\"},",
+            "    {CombatMod::Secondary, L\"Muni\\u00e7\\u00e3o secund\\u00e1ria infinita\", L\"Mant\\u00e9m a muni\\u00e7\\u00e3o do disparo alternativo.\"},",
+            "    {CombatMod::Grenades, L\"Granadas infinitas\", L\"Arremessar preserva o estoque de granadas.\"},",
+            "    {CombatMod::RapidFire, L\"Cad\\u00eancia do tiro\", L\"Enter abre os valores prontos e o ajuste personalizado.\"},",
+            "    {CombatMod::ArcCooling, L\"Arc Charger sem aquecer\", L\"Impede o ac\\u00famulo de calor no disparo.\"},",
+            "    {CombatMod::SniperFocus, L\"Foco da sniper ilimitado\", L\"Mant\\u00e9m a c\\u00e2mera lenta da sniper enquanto estiver em uso.\"},",
+            "    {CombatMod::LongerJump, L\"Salto prolongado\", L\"Reduz a desacelera\\u00e7\\u00e3o durante a subida do salto.\"},",
+            "    {tank_health, L\"Tanque / Vida infinita\", L\"Preserva a vida do tanque nesta rotina de dano.\"},",
+            "    {stalker_health, L\"Stalker / Vida infinita\", L\"Preserva a vida do Stalker nesta rotina de dano.\"},",
+            "    {tank_cooling, L\"Tanque / Sem aquecer\", L\"Limita o aquecimento das torretas do tanque.\"},",
+            "    {stalker_cooling, L\"Stalker / Sem aquecer\", L\"Limita o aquecimento da torreta do Stalker.\"},",
+            "    {flight, L\"Voo ao segurar pulo\", L\"Pule e segure Espa\\u00e7o ou X no controle. Solte para descer.\"},",
+            "    {static_cast<CombatMod>(1u << 17), L\"Hit kill das armas\", L\"Aumenta o dano dos seus acertos. Pode afetar aliados e objetos que aceitam dano. Use na campanha.\"},",
+            "    {free_camera, L\"Câmera livre\", L\"WASD move, mouse ou setas giram, Espaço/C sobem e descem. Shift acelera.\"},",
+            "    {noclip, L\"Noclip\", L\"Home liga, End desliga no local. WASD move, Espaço sobe e C desce.\"},",
+            "    {faster_walk, L\"Andar mais rápido\", L\"Enter abre o ajuste de velocidade em terra firme.\"},",
+            "};",
+            "static constexpr int combat_row_count = sizeof(combat_rows) / sizeof(combat_rows[0]);",
+            "static constexpr int rapid_min = 10;",
+            "static constexpr int rapid_max = 120;",
+            "static std::atomic<int> rapid_tenths{rapid_min};",
+            "static constexpr int cadence_presets[] = {10, 20, 40, 60, 80, 100, 120};",
+            "static constexpr int walk_presets[] = {10, 20, 40, 80};",
+            "static constexpr int walk_max = 80;",
+            "static std::atomic<int> walk_tenths{10};",
+            "static bool editing_walk_speed = false;",
+            "",
+            "extern \"C\" int rfom_walk_tenths(void)",
+            "{",
+            "    return walk_tenths.load(std::memory_order_relaxed);",
+            "}",
+            "",
+            "static int speed_max()",
+            "{",
+            "    return editing_walk_speed ? walk_max : rapid_max;",
+            "}",
+            "",
+            "extern \"C\" int rfom_rapid_tenths(void);",
+            "",
+            "static int speed_current()",
+            "{",
+            "    return editing_walk_speed ? rfom_walk_tenths() : rfom_rapid_tenths();",
+            "}",
+            "",
+            "static int speed_custom_row()",
+            "{",
+            "    return editing_walk_speed ? sizeof(walk_presets) / sizeof(walk_presets[0])",
+            "                              : sizeof(cadence_presets) / sizeof(cadence_presets[0]);",
+            "}",
+            "",
+            "static int speed_preset(int row)",
+            "{",
+            "    return editing_walk_speed ? walk_presets[row] : cadence_presets[row];",
+            "}",
+            "static std::wstring cadence_input;",
+            "static unsigned cadence_keys_down = 0;",
+            "",
+            "static std::wstring cadence_text(int rate)",
+            "{",
+            "    return std::to_wstring(rate / 10) + L\",\" + std::to_wstring(rate % 10) + L\"×\";",
+            "}",
+            "",
+            "static int custom_rate()",
+            "{",
+            "    int integer = 0, decimal = 0;",
+            "    bool fraction = false;",
+            "    for (wchar_t c : cadence_input) {",
+            "        if (c == L',') { fraction = true; continue; }",
+            "        if (fraction) { decimal = c - L'0'; break; }",
+            "        integer = std::min(speed_max() / 10, integer * 10 + c - L'0');",
+            "    }",
+            "    return std::clamp(integer * 10 + decimal, rapid_min, speed_max());",
+            "}",
+            "",
+            "extern \"C\" int rfom_rapid_tenths(void)",
+            "{",
+            "    return rapid_tenths.load(std::memory_order_relaxed);",
+            "}",
+            "",
+            "static void set_rapid_tenths(int value)",
+            "{",
+            "    const int rate = std::clamp(value, rapid_min, rapid_max);",
+            "    if (rapid_tenths.exchange(rate, std::memory_order_relaxed) != rate)",
+            "        LOG(\"fire rate multiplier %d.%dx\", rate / 10, rate % 10);",
+            "}",
+            "// Campaign weapon types accepted by Player Weapon Add (0x0023E88C).",
+            "static constexpr struct { int type; const wchar_t* name; } weapon_choices[] = {",
+            "    {0, L\"M5A2 Carbine\"}, {1, L\"Rossmore\"}, {2, L\"Fareye\"}, {3, L\"LAARK\"},",
+            "    {5, L\"Dragon\"}, {6, L\"Sapper\"}, {7, L\"Bullseye\"}, {8, L\"Auger\"},",
+            "    {11, L\"Reapers (atenção)\"}, {12, L\"Arc Charger (atenção)\"},",
+            "};",
+            "static constexpr int weapon_count = sizeof(weapon_choices) / sizeof(weapon_choices[0]);",
+            "static constexpr int grenade_action = 1 << 15;",
+            "static constexpr int recover_weapon_action = 1 << 13;",
+            "static constexpr int armory_grenades_row = weapon_count;",
+            "static constexpr int armory_all_row = weapon_count + 1;",
+            "static constexpr int armory_apply_row = weapon_count + 2;",
+            "static constexpr int armory_recover_row = weapon_count + 3;",
+            "static unsigned weapon_selection = 0;",
+            "static bool grenade_selection = false;",
+            "static int combat_parent_row = 0;",
+            "",
+            "static unsigned standard_weapon_choices()",
+            "{",
+            "    unsigned mask = 0;",
+            "    for (const auto& weapon : weapon_choices)",
+            "        if (weapon.type < 11) mask |= 1u << weapon.type;",
+            "    return mask;",
+            "}",
+            "static std::atomic<uint64_t> campaign_request{0};",
+            "",
+            "static void request_campaign_action(int action)",
+            "{",
+            "    const uint64_t expiry = GetTickCount64() + 1500;",
+            "    campaign_request.store((expiry << 16) | static_cast<unsigned>(action), std::memory_order_relaxed);",
+            "}",
+            "",
+            "extern \"C\" int rfom_take_campaign_request(void)",
+            "{",
+            "    const uint64_t request = campaign_request.exchange(0, std::memory_order_relaxed);",
+            "    if (!request || GetTickCount64() > (request >> 16)) return -1;",
+            "    return static_cast<int>(request & 0xFFFF);",
+            "}",
+            ""
+          ]
+        ],
+        [
+          567,
+          0,
+          [
+            "    if (s_page == PG_COMBAT) return combat_row_count + 4;",
+            "    if (s_page == PG_CADENCE) return speed_custom_row() + 2;",
+            "    if (s_page == PG_ARMORY) return armory_recover_row + 2;"
+          ]
+        ],
+        [
+          576,
+          1,
+          [
+            "    if (i == n - 1) {",
+            "        l = s_page == PG_COMBAT ? L\"Fechar\" : (s_page == PG_CADENCE || s_page == PG_ARMORY) ? L\"Voltar\" : L\"Back\";",
+            "        return;",
+            "    }",
+            "    if (s_page == PG_CADENCE) {",
+            "        if (i == speed_custom_row()) {",
+            "            l = L\"Personalizado\";",
+            "            v = cadence_input.empty() ? L\"Digite um valor\" : cadence_input + L\" ×\";",
+            "        } else {",
+            "            l = i == 0 ? L\"Normal\" : cadence_text(speed_preset(i));",
+            "            if (i == 0) v = L\"1,0×\";",
+            "            if (speed_preset(i) == speed_current()) v = L\"Ativo\";",
+            "        }",
+            "        return;",
+            "    }",
+            "    if (s_page == PG_ARMORY) {",
+            "        if (i < weapon_count) {",
+            "            l = weapon_choices[i].name;",
+            "            v = (weapon_selection & (1u << weapon_choices[i].type)) ? L\"[x]\" : L\"[ ]\";",
+            "        } else if (i == armory_grenades_row) {",
+            "            l = L\"Repor granadas\";",
+            "            v = grenade_selection ? L\"[x]\" : L\"[ ]\";",
+            "        } else if (i == armory_all_row) {",
+            "            l = (weapon_selection & standard_weapon_choices()) == standard_weapon_choices() ? L\"Desmarcar padrão\" : L\"Marcar armas padrão\";",
+            "        } else if (i == armory_recover_row) {",
+            "            l = L\"Destravar troca de arma\";",
+            "        } else {",
+            "            l = L\"Aplicar seleção\";",
+            "            int selected = 0;",
+            "            for (const auto& weapon : weapon_choices) selected += (weapon_selection >> weapon.type) & 1u;",
+            "            v = std::to_wstring(selected) + L\" armas\";",
+            "            if (grenade_selection) v += L\" + granadas\";",
+            "        }",
+            "        return;",
+            "    }",
+            "    if (s_page == PG_COMBAT) {",
+            "        if (i == combat_row_count) { l = L\"Marcar posi\\u00e7\\u00e3o\"; return; }",
+            "        if (i == combat_row_count + 1) { l = L\"Voltar \\u00e0 posi\\u00e7\\u00e3o\"; return; }",
+            "        if (i == combat_row_count + 2) {",
+            "            l = L\"Armas e itens\";",
+            "            v = L\"Abrir lista  \\u25B8\";",
+            "            return;",
+            "        }",
+            "        l = combat_rows[i].title;",
+            "        if (combat_rows[i].mod == CombatMod::RapidFire || combat_rows[i].mod == faster_walk) {",
+            "            const int rate = combat_rows[i].mod == faster_walk ? rfom_walk_tenths() : rfom_rapid_tenths();",
+            "            v = cadence_text(rate) + L\"  \\u25B8\";",
+            "        } else v = combat_mod_enabled(combat_rows[i].mod) ? L\"Ligado\" : L\"Desligado\";",
+            "        return;",
+            "    }"
+          ]
+        ],
+        [
+          594,
+          0,
+          [
+            "    if (s_page == PG_CADENCE)",
+            "        return s_sel == speed_custom_row()",
+            "            ? L\"Digite com ponto ou vírgula, ou use ←→. Máximo de \" + cadence_text(speed_max()) + L\".\"",
+            "            : L\"Valor atual: \" + cadence_text(speed_current());",
+            "    if (s_page == PG_ARMORY && s_sel < weapon_count && weapon_choices[s_sel].type >= 11)",
+            "        return L\"Pode prender a troca de arma. Se acontecer, use Destravar troca de arma.\";",
+            "    if (s_page == PG_ARMORY && s_sel == armory_recover_row)",
+            "        return L\"Se a Arc Charger ou as Reapers estiverem presas, tenta voltar para a carabina do invent\\u00e1rio.\";",
+            "    if (s_page == PG_ARMORY)",
+            "        return L\"Marque o que quiser. A seleção inteira vai ao inventário ao aplicar.\";",
+            "    if (s_page == PG_COMBAT) {",
+            "        if (s_sel == combat_row_count + 2)",
+            "            return L\"Abra a lista para dar armas, munição e granadas de uma vez.\";",
+            "        if (s_sel < combat_row_count) return combat_rows[s_sel].help;",
+            "        if (s_sel == combat_row_count) return L\"Guarda a posi\\u00e7\\u00e3o atual em terra firme.\";",
+            "        if (s_sel == combat_row_count + 1) return L\"Retorna \\u00e0 marca durante esta fase.\";",
+            "        return L\"Voltar ao jogo.\";",
+            "    }"
+          ]
+        ],
+        [
+          616,
+          1,
+          [
+            "    DrawTextW(dc, s_page == PG_CADENCE ? (editing_walk_speed ? L\"VELOCIDADE AO ANDAR\" : L\"CADÊNCIA DO TIRO\") : s_page == PG_ARMORY ? L\"ARMAS E ITENS\" : s_page == PG_COMBAT ? L\"MOD MENU / COMBATE\" : s_page == PG_MAIN ? L\"MORE PC OPTIONS\" : s_page == PG_KEYS ? L\"KEY BINDINGS\" : L\"CONTROLLER LAYOUT\", -1, &r,"
+          ]
+        ],
+        [
+          637,
+          1,
+          [
+            "    DrawTextW(dc, s_page == PG_CADENCE || s_page == PG_ARMORY ? L\"↑↓ Selecionar    Enter / A Confirmar    Esc / B Voltar\" : s_page == PG_COMBAT ? L\"\\u2191\\u2193 Selecionar    Enter / A Abrir ou alternar    Esc / B Fechar\" : L\"\\u2191\\u2193 select    \\u2190\\u2192 change    Enter / A  OK    Esc / B  back\", -1, &rh2,"
+          ]
+        ],
+        [
+          781,
+          1,
+          [
+            "static void open_menu(int page)"
+          ]
+        ],
+        [
+          784,
+          1,
+          [
+            "    s_open = 1; s_page = page; s_sel = 0; s_top = 0; s_capture = 0;"
+          ]
+        ],
+        [
+          789,
+          1,
+          [
+            "    LOG(\"%s\", page == PG_COMBAT ? \"combat mod menu\" : \"extras menu\");"
+          ]
+        ],
+        [
+          791,
+          0,
+          [
+            "extern \"C\" void rfx_open_menu(void) { open_menu(PG_MAIN); }"
+          ]
+        ],
+        [
+          792,
+          0,
+          [
+            "static bool cadence_number_keys(int focused)",
+            "{",
+            "    unsigned pressed = 0;",
+            "    const auto down = [&](int vk) { return focused && (GetAsyncKeyState(vk) & 0x8000); };",
+            "    for (int digit = 0; digit <= 9; ++digit)",
+            "        if (down('0' + digit) || down(VK_NUMPAD0 + digit)) pressed |= 1u << digit;",
+            "    if (down(VK_DECIMAL) || down(VK_OEM_PERIOD) || down(VK_OEM_COMMA)) pressed |= 1u << 10;",
+            "    if (down(VK_BACK)) pressed |= 1u << 11;",
+            "    const unsigned fresh = pressed & ~cadence_keys_down;",
+            "    cadence_keys_down = pressed;",
+            "    if (s_sel != speed_custom_row() || !fresh) return false;",
+            "    if (fresh & (1u << 11)) {",
+            "        if (!cadence_input.empty()) cadence_input.pop_back();",
+            "        return true;",
+            "    }",
+            "    if (cadence_input.size() < 12) {",
+            "        for (int digit = 0; digit <= 9; ++digit)",
+            "            if (fresh & (1u << digit)) cadence_input += wchar_t(L'0' + digit);",
+            "        if ((fresh & (1u << 10)) && cadence_input.find(L',') == std::wstring::npos) cadence_input += L',';",
+            "    }",
+            "    return true;",
+            "}",
+            "",
+            "static void combat_subpage(int page)",
+            "{",
+            "    combat_parent_row = s_sel;",
+            "    s_page = page;",
+            "    s_sel = s_top = 0;",
+            "    cadence_input.clear();",
+            "    cadence_keys_down = 0;",
+            "}",
+            ""
+          ]
+        ],
+        [
+          806,
+          0,
+          [
+            "    if (s_page == PG_CADENCE || s_page == PG_ARMORY) {",
+            "        const bool cadence = s_page == PG_CADENCE;",
+            "        const bool typed = cadence && cadence_number_keys(focused);",
+            "        if (typed) {",
+            "            InvalidateRect(s_ov, NULL, FALSE);",
+            "            return;",
+            "        }",
+            "        if ((e & IN_NO) || ((e & IN_YES) && s_sel == n - 1)) {",
+            "            s_page = PG_COMBAT; s_sel = combat_parent_row; s_top = 0;",
+            "        } else if (e & IN_UP) s_sel = (s_sel + n - 1) % n;",
+            "        else if (e & IN_DOWN) s_sel = (s_sel + 1) % n;",
+            "        else if (cadence && s_sel == speed_custom_row() && (e & (IN_LEFT | IN_RIGHT))) {",
+            "            const int base = cadence_input.empty() ? speed_current() : custom_rate();",
+            "            const int value = std::clamp(base + ((e & IN_RIGHT) ? 1 : -1), rapid_min, speed_max());",
+            "            cadence_input = std::to_wstring(value / 10) + L\",\" + std::to_wstring(value % 10);",
+            "        } else if (e & IN_YES) {",
+            "            if (cadence) {",
+            "                if (s_sel == speed_custom_row() && cadence_input.find_first_of(L\"0123456789\") == std::wstring::npos)",
+            "                    return;",
+            "                const int chosen = s_sel == speed_custom_row() ? custom_rate() : speed_preset(s_sel);",
+            "                if (editing_walk_speed) walk_tenths.store(chosen, std::memory_order_relaxed);",
+            "                else set_rapid_tenths(chosen);",
+            "                const int rate = speed_current();",
+            "                char result[40];",
+            "                snprintf(result, sizeof result, \"%d,%dx%s\", rate / 10, rate % 10, rate == speed_max() ? \" (maximo)\" : \"\");",
+            "                rfpf_toast(editing_walk_speed ? \"Velocidade ao andar\" : \"Cadencia do tiro\", result, 0);",
+            "                menu_close();",
+            "                return;",
+            "            }",
+            "            if (s_sel < weapon_count) weapon_selection ^= 1u << weapon_choices[s_sel].type;",
+            "            else if (s_sel == armory_grenades_row) grenade_selection = !grenade_selection;",
+            "            else if (s_sel == armory_all_row)",
+            "                weapon_selection ^= (weapon_selection & standard_weapon_choices()) == standard_weapon_choices()",
+            "                    ? standard_weapon_choices() : (standard_weapon_choices() & ~weapon_selection);",
+            "            else if (s_sel == armory_apply_row) {",
+            "                const unsigned mask = weapon_selection | (grenade_selection ? grenade_action : 0);",
+            "                if (!mask) return;",
+            "                request_campaign_action(mask);",
+            "                menu_close();",
+            "                return;",
+            "            } else if (s_sel == armory_recover_row) {",
+            "                request_campaign_action(recover_weapon_action);",
+            "                menu_close();",
+            "                return;",
+            "            }",
+            "        } else return;",
+            "        InvalidateRect(s_ov, NULL, FALSE);",
+            "        return;",
+            "    }",
+            "    if (s_page == PG_COMBAT) {",
+            "        if ((e & IN_NO) || ((e & IN_YES) && s_sel == n - 1)) { menu_close(); return; }",
+            "        if (e & IN_UP) s_sel = (s_sel + n - 1) % n;",
+            "        else if (e & IN_DOWN) s_sel = (s_sel + 1) % n;",
+            "        else if (s_sel == combat_row_count + 2 && (e & IN_YES)) {",
+            "            combat_subpage(PG_ARMORY);",
+            "        } else if (s_sel < combat_row_count && (combat_rows[s_sel].mod == CombatMod::RapidFire || combat_rows[s_sel].mod == faster_walk) && (e & IN_YES)) {",
+            "            editing_walk_speed = combat_rows[s_sel].mod == faster_walk;",
+            "            combat_subpage(PG_CADENCE);",
+            "        } else if (e & IN_YES) {",
+            "            if (s_sel >= combat_row_count) {",
+            "                rfom_position_action.store(s_sel == combat_row_count ? PositionAction::Mark : PositionAction::Return,",
+            "                                           std::memory_order_relaxed);",
+            "                menu_close();",
+            "                return;",
+            "            }",
+            "            const unsigned bit = static_cast<unsigned>(combat_rows[s_sel].mod);",
+            "            const unsigned old = rfom_combat_mods.fetch_xor(bit, std::memory_order_relaxed);",
+            "            LOG(\"combat mod bit %u: %s\", bit, old & bit ? \"off\" : \"on\");",
+            "        } else return;",
+            "        InvalidateRect(s_ov, NULL, FALSE);",
+            "        return;",
+            "    }"
+          ]
+        ],
+        [
+          908,
+          0,
+          [
+            "extern \"C\" bool rfom_free_camera_active();",
+            "static std::atomic<bool> s_free_camera_ui_block{false};",
+            "",
+            "extern \"C\" bool rfom_free_camera_ui_blocked()",
+            "{",
+            "    return s_free_camera_ui_block.load(std::memory_order_relaxed);",
+            "}",
+            ""
+          ]
+        ],
+        [
+          915,
+          1,
+          [
+            "    if (other_prompt) {",
+            "        s_free_camera_ui_block.store(true, std::memory_order_relaxed);",
+            "        rfom_flight_held.store(false, std::memory_order_relaxed);",
+            "        if (s_open) menu_close();",
+            "        return;",
+            "    }   /* the PC menu / quit prompt owns input */"
+          ]
+        ],
+        [
+          925,
+          0,
+          [
+            "    if (s_is_level_exe) {",
+            "        static bool was = false;",
+            "        const bool down = focused && (GetAsyncKeyState(VK_CONTROL) & 0x8000) &&",
+            "                          (GetAsyncKeyState(VK_F2) & 0x8000);",
+            "        if (down && !was) {",
+            "            if (s_open && (s_page == PG_COMBAT || s_page == PG_CADENCE || s_page == PG_ARMORY)) menu_close();",
+            "            else if (!s_open && !s_photo_on && !s_disc_paused && !s_movie_on) open_menu(PG_COMBAT);",
+            "        }",
+            "        was = down;",
+            "    }"
+          ]
+        ],
+        [
+          981,
+          0,
+          [
+            "    const bool camera_controls = s_is_level_exe && rfom_free_camera_active();",
+            "    const bool menu_controls = s_open || s_release || s_photo_on || s_disc_paused || s_movie_on;",
+            "    s_free_camera_ui_block.store(menu_controls, std::memory_order_relaxed);",
+            "    const bool can_fly = !camera_controls && focused && s_is_level_exe && !s_open && !s_release &&",
+            "                         !s_photo_on && !s_movie_on && !s_disc_paused && combat_mod_enabled(flight);",
+            "    rfom_flight_held.store(can_fly && ((GetAsyncKeyState(VK_SPACE) & 0x8000) || (xi_raw(NULL) & XINPUT_GAMEPAD_A)),",
+            "                          std::memory_order_relaxed);",
+            ""
+          ]
+        ],
+        [
+          982,
+          1,
+          [
+            "    static bool home_was_down = false, end_was_down = false;",
+            "    const bool home_down = (GetAsyncKeyState(VK_HOME) & 0x8000) != 0;",
+            "    const bool end_down = (GetAsyncKeyState(VK_END) & 0x8000) != 0;",
+            "    if (s_is_level_exe && focused && !menu_controls && on_foot) {",
+            "        const unsigned bit = static_cast<unsigned>(noclip);",
+            "        if (end_down && !end_was_down) {",
+            "            rfom_combat_mods.fetch_and(~bit, std::memory_order_relaxed);",
+            "        } else if (home_down && !home_was_down && !end_down && !camera_controls) {",
+            "            rfom_combat_mods.fetch_or(bit, std::memory_order_relaxed);",
+            "        }",
+            "    }",
+            "    home_was_down = home_down;",
+            "    end_was_down = end_down;",
+            "    crosshair_tick(!camera_controls && s_crosshair && focused && on_foot && !s_open && !s_photo_on);"
+          ]
+        ],
+        [
+          987,
+          1,
+          [
+            "      if (s_open || s_release || s_photo_on || s_disc_paused || camera_controls) { g_rfom_input_block = 1; held = 1; }"
+          ]
+        ]
+      ]
+    },
+    "recompiled_game/ppu_recomp_005.cpp": {
+      "base_sha256": "effd48bd99e0708cab3974782ba3b1c96886a52e48fc37422c5a9ed036c25e08",
+      "final_sha256": "e3a3b119f9ab03e75e10e5d3cdaceacd5c110c46d2bbed6a5fe2db1c1238dd08",
+      "edits": [
+        [
+          0,
+          0,
+          [
+            "#include \"../project/rfom_movement_menu.h\""
+          ]
+        ],
+        [
+          36,
+          0,
+          [
+            "extern \"C\" int rfom_walk_tenths(void);"
+          ]
+        ],
+        [
+          33445,
+          0,
+          [
+            "        if (rfom_movement_allowed((uint32_t)R_29) && vm_read8(R_29 + 0x1EB) == 1) {",
+            "            const double speed = rfom_walk_tenths() / 10.0;",
+            "            if (speed > 1.0) {",
+            "                ctx->fpr[12] = ppu_fp_single(ctx->fpr[12] * speed);",
+            "                ctx->fpr[13] = ppu_fp_single(ctx->fpr[13] * speed);",
+            "            }",
+            "        }"
+          ]
+        ],
+        [
+          37242,
+          1,
+          [
+            "        ctx->fpr[1] = combat_mod_enabled(CombatMod::Health) && ctx->fpr[1] > 0.0",
+            "            ? ctx->fpr[0] : ppu_fp_single(ppu_fsub(ctx->fpr[0], ctx->fpr[1]));"
+          ]
+        ],
+        [
+          44315,
+          0,
+          [
+            "extern \"C\" int rfom_take_campaign_request(void);",
+            "extern \"C\" void rfpf_toast(const char*, const char*, char);",
+            "",
+            "static void rfom_refill_campaign_weapon(ppu_context& call, uint32_t weapon)",
+            "{",
+            "    // Use the same capacity queries used by the game's inventory restore.",
+            "    const auto fill = [&](uint32_t offset, void (*capacity)(ppu_context*)) {",
+            "        const int current = static_cast<int16_t>(vm_read16(weapon + offset));",
+            "        if (current < 0) return;",
+            "        call.gpr[2] = 0x006BD648;",
+            "        call.gpr[3] = weapon;",
+            "        capacity(&call);",
+            "        const int limit = static_cast<int32_t>(call.gpr[3]);",
+            "        if (limit > current && limit <= 32767)",
+            "            vm_write16(weapon + offset, static_cast<uint16_t>(limit));",
+            "    };",
+            "    fill(0x3BC, func_00338374); // primary magazine",
+            "    fill(0x3BE, func_003381FC); // primary reserve",
+            "    fill(0x3C0, func_003383B0); // secondary magazine",
+            "    fill(0x3C2, func_003382AC); // secondary reserve",
+            "}",
+            "",
+            "static bool rfom_grant_weapon(ppu_context& call, uint32_t player, int action)",
+            "{",
+            "    call.gpr[2] = 0x006BD648;",
+            "    for (unsigned index = 0; index < 16; ++index) {",
+            "        call.gpr[3] = player;",
+            "        call.gpr[4] = index;",
+            "        func_00296B0C(&call);",
+            "        const uint32_t slot = static_cast<uint32_t>(call.gpr[3]);",
+            "        const uint32_t weapon = slot ? vm_read32(slot + 0x40) : 0;",
+            "        if (weapon && vm_read16(weapon + 0x3C4) == action) {",
+            "            rfom_refill_campaign_weapon(call, weapon);",
+            "            return true;",
+            "        }",
+            "    }",
+            "",
+            "    // Use the template and arguments from the campaign's Player Weapon Add command.",
+            "    const uint32_t script_toc = vm_read32_fast(call.gpr[2] - 0x78E4);",
+            "    const uint32_t weapon_template = vm_read32_fast(script_toc - 0x79EC);",
+            "    call.gpr[3] = player;",
+            "    call.gpr[4] = weapon_template;",
+            "    call.gpr[5] = action;",
+            "    call.gpr[6] = 0;",
+            "    call.gpr[7] = 0;",
+            "    call.gpr[8] = 1;",
+            "    func_002A736C(&call);",
+            "    DRAIN_TRAMPOLINE(&call);",
+            "    const uint32_t slot = static_cast<uint32_t>(call.gpr[3]);",
+            "    const uint32_t weapon = slot ? vm_read32(slot + 0x40) : 0;",
+            "    if (!weapon || vm_read16(weapon + 0x3C4) != action) return false;",
+            "    rfom_refill_campaign_weapon(call, weapon);",
+            "    return true;",
+            "}",
+            "",
+            "static void rfom_recover_weapon_switch(ppu_context& call, uint32_t player)",
+            "{",
+            "    call.gpr[3] = player;",
+            "    func_00295D00(&call);",
+            "    const uint32_t current = static_cast<uint32_t>(call.gpr[3]);",
+            "    const uint32_t held = current ? vm_read32(current + 0x40) : 0;",
+            "    const int type = held ? vm_read16(held + 0x3C4) : -1;",
+            "    if (type != 11 && type != 12) {",
+            "        rfpf_toast(\"Troca de arma\", \"Use com a Arc Charger ou as Reapers equipadas.\", 0);",
+            "        return;",
+            "    }",
+            "",
+            "    call.gpr[3] = player;",
+            "    call.gpr[4] = 0;",
+            "    func_00296B0C(&call);",
+            "    const uint32_t slot = static_cast<uint32_t>(call.gpr[3]);",
+            "    const uint32_t carbine = slot ? vm_read32(slot + 0x40) : 0;",
+            "    if (!carbine || vm_read16(carbine + 0x3C4) != 0 || !vm_read32(player + 0x3E94)) {",
+            "        rfpf_toast(\"Troca de arma\", \"Carabina indisponivel. Volte ao checkpoint.\", 0);",
+            "        return;",
+            "    }",
+            "",
+            "    // Match the game's cancel-and-equip sequence from the pickup path.",
+            "    call.gpr[3] = player;",
+            "    func_002962FC(&call);",
+            "    DRAIN_TRAMPOLINE(&call);",
+            "    call.gpr[2] = 0x006BD648;",
+            "    call.gpr[3] = player;",
+            "    call.gpr[4] = slot;",
+            "    call.gpr[5] = static_cast<uint64_t>(-1);",
+            "    func_002984F8(&call);",
+            "    DRAIN_TRAMPOLINE(&call);",
+            "    call.gpr[3] = player;",
+            "    func_00295D00(&call);",
+            "    const bool equipped = static_cast<uint32_t>(call.gpr[3]) == slot;",
+            "    rfpf_toast(\"Troca de arma\", equipped ? \"Carabina equipada.\" : \"Troca recusada. Volte ao checkpoint.\", 0);",
+            "}",
+            "",
+            "static void rfom_apply_campaign_request(const ppu_context& state, uint32_t player)",
+            "{",
+            "    const int action = rfom_take_campaign_request();",
+            "    if (action < 0) return;",
+            "    if (!rfom_movement_allowed(player)) {",
+            "        rfpf_toast(\"Mod menu\", \"Use durante a campanha, fora de cenas.\", 0);",
+            "        return;",
+            "    }",
+            "",
+            "    ppu_context call = state;",
+            "    call.gpr[1] -= 0x80;",
+            "    vm_write64_stk(call.gpr[1], state.gpr[1]);",
+            "    call.gpr[2] = 0x006BD648;",
+            "    call.gpr[3] = player;",
+            "    func_00290CE8(&call);",
+            "    if (!call.gpr[3]) return;",
+            "",
+            "    if (action == (1 << 13)) {",
+            "        rfom_recover_weapon_switch(call, player);",
+            "        return;",
+            "    }",
+            "",
+            "    int selected = 0, applied = 0;",
+            "    for (int type = 0; type <= 12; ++type) {",
+            "        if (!(action & (1 << type))) continue;",
+            "        ++selected;",
+            "        if (rfom_grant_weapon(call, player, type)) ++applied;",
+            "    }",
+            "    const bool grenades = (action & (1 << 15)) != 0;",
+            "    if (grenades) {",
+            "        // The native save restore uses this function for grenade slots 0 through 3.",
+            "        for (unsigned type = 0; type < 4; ++type) {",
+            "            call.gpr[2] = 0x006BD648;",
+            "            call.gpr[3] = player;",
+            "            call.gpr[4] = type;",
+            "            call.gpr[5] = 4;",
+            "            func_002A6EB8(&call);",
+            "            DRAIN_TRAMPOLINE(&call);",
+            "        }",
+            "    }",
+            "    char result[84];",
+            "    snprintf(result, sizeof result, \"%d/%d armas prontas%s\", applied, selected,",
+            "             grenades ? \" | granadas repostas\" : \"\");",
+            "    rfpf_toast(\"Armas e itens\", result, 0);",
+            "}",
+            ""
+          ]
+        ],
+        [
+          44569,
+          0,
+          [
+            "        rfom_apply_campaign_request(*ctx, static_cast<uint32_t>(R_31));"
+          ]
+        ],
+        [
+          46828,
+          1,
+          [
+            "        ctx->gpr[5] = R_5 = combat_mod_enabled(CombatMod::Grenades) && static_cast<int32_t>(R_5) < 0",
+            "            ? R_9 : R_5 + R_9;"
+          ]
+        ],
+        [
+          52552,
+          0,
+          [
+            "        if (combat_mod_enabled(CombatMod::LongerJump) && ctx->fpr[31] > 0.0 && ctx->fpr[1] > 0.0)",
+            "            ctx->fpr[1] *= 0.5;"
+          ]
+        ],
+        [
+          52553,
+          0,
+          [
+            "        if (combat_mod_enabled(flight) && rfom_flight_held.load(std::memory_order_relaxed) &&",
+            "            rfom_movement_allowed((uint32_t)R_31)) ctx->fpr[31] = 8.0;"
+          ]
+        ],
+        [
+          52575,
+          0,
+          [
+            "        if (combat_mod_enabled(flight) && rfom_flight_held.load(std::memory_order_relaxed) &&",
+            "            rfom_movement_allowed((uint32_t)R_31)) ctx->fpr[31] = 8.0;"
+          ]
+        ],
+        [
+          52901,
+          1,
+          [
+            "        if (!rfom_noclip_step(static_cast<uint32_t>(R_31))) {",
+            "            ctx->lr = R_lr = 0x002AC238; func_002AB0A8(ctx); DRAIN_TRAMPOLINE(ctx); _RCX_RL;",
+            "        }"
+          ]
+        ]
+      ]
+    },
+    "recompiled_game/ppu_recomp_006.cpp": {
+      "base_sha256": "9145b73048eb02ad59d2f588d348e3aae7c66eca149a02cf37219d6aea0eec82",
+      "final_sha256": "1db1465154348f30c68ff4664b4f5aea2cb9bd9b75ca1b461abf580cf231e932",
+      "edits": [
+        [
+          0,
+          0,
+          [
+            "#include <cstdint>",
+            "#include \"../project/rfom_combat_menu.h\"",
+            "extern \"C\" bool rfom_rapid_local_owner(uint32_t owner);",
+            "extern \"C\" int rfom_rapid_tenths(void);"
+          ]
+        ],
+        [
+          68417,
+          1,
+          [
+            "        ctx->fpr[30] = combat_mod_enabled(CombatMod::ArcCooling)",
+            "            ? 0.0 : ppu_fp_single(ppu_fadd(ctx->fpr[30], ctx->fpr[1]));"
+          ]
+        ],
+        [
+          68971,
+          1,
+          [
+            "static void rfom_advance_weapon_clock(ppu_context* ctx, double rate) {"
+          ]
+        ],
+        [
+          68991,
+          0,
+          [
+            "        if (rate > 1.0 && ctx->fpr[0] > 0.0)",
+            "            ctx->fpr[0] = ppu_fp_single(ctx->fpr[0] * rate);"
+          ]
+        ],
+        [
+          69000,
+          0,
+          [
+            "void func_0033852C(ppu_context* ctx) {",
+            "        rfom_advance_weapon_clock(ctx, 1.0);",
+            "}",
+            ""
+          ]
+        ],
+        [
+          70219,
+          1,
+          [
+            "        if (!combat_mod_enabled(CombatMod::Reserve) || static_cast<int64_t>(R_31) <= 0)",
+            "            ctx->gpr[0] = R_0 = R_0 - R_31;"
+          ]
+        ],
+        [
+          71040,
+          1,
+          [
+            "        ctx->gpr[0] = R_0 = combat_mod_enabled(CombatMod::Magazine) && static_cast<int32_t>(R_0) > 0",
+            "            ? R_9 : R_9 - R_0;"
+          ]
+        ],
+        [
+          71141,
+          1,
+          [
+            "        ctx->gpr[0] = R_0 = combat_mod_enabled(CombatMod::Secondary) && static_cast<int32_t>(R_0) > 0",
+            "            ? R_9 : R_9 - R_0;"
+          ]
+        ],
+        [
+          79379,
+          0,
+          [
+            "        double rapid_rate = 1.0;"
+          ]
+        ],
+        [
+          79460,
+          1,
+          [
+            "        rapid_rate = rfom_rapid_local_owner(static_cast<uint32_t>(R_29))",
+            "            ? rfom_rapid_tenths() / 10.0 : 1.0;",
+            "        ctx->lr = R_lr = 0x00340280; rfom_advance_weapon_clock(ctx, rapid_rate); DRAIN_TRAMPOLINE(ctx); _RCX_RL;"
+          ]
+        ],
+        [
+          79466,
+          0,
+          [
+            "        // Advance only the weapon's re-fire countdown. Let the original helper and state machine finish it.",
+            "        if (rapid_rate > 1.0 && ctx->fpr[1] > 0.0)",
+            "            ctx->fpr[1] = ppu_fp_single(ctx->fpr[1] * rapid_rate);"
+          ]
+        ],
+        [
+          117059,
+          1,
+          [
+            "        if (!combat_mod_enabled(CombatMod::SniperFocus)) {",
+            "            float ftmp = (float)ctx->fpr[0]; uint32_t tmp; memcpy(&tmp, &ftmp, 4); vm_write32(R_11 + 0x0, tmp);",
+            "        } else {",
+            "            // Keep the expiry decision consistent with the unchanged timer.",
+            "            const double timer = ctx->fpr[13], limit = ctx->fpr[12];",
+            "            const uint32_t cmp = (timer != timer || limit != limit) ? 1 : (timer < limit) ? 8 : (timer > limit) ? 4 : 2;",
+            "            ctx->cr = R_cr = (R_cr & ~0xFu) | cmp;",
+            "        }"
+          ]
+        ]
+      ]
+    },
+    "recompiled_game/ppu_recomp_008.cpp": {
+      "base_sha256": "14a1c1096d079f964d8c333ee0170b8e7e9ca0e3551f43961966ab83c520cc74",
+      "final_sha256": "76de42df56784adf97c50d3e05c78bf3e3522b7bf9bdd728f1705be63a51569b",
+      "edits": [
+        [
+          0,
+          0,
+          [
+            "#include \"../project/rfom_vehicle_menu.h\""
+          ]
+        ],
+        [
+          86013,
+          1,
+          [
+            "        if (!combat_mod_enabled(stalker_health) || ctx->fpr[0] <= 0.0)",
+            "            ctx->fpr[13] = ppu_fp_single(ppu_fsub(ctx->fpr[13], ctx->fpr[0]));"
+          ]
+        ],
+        [
+          100101,
+          1,
+          [
+            "        if (!combat_mod_enabled(tank_health) || ctx->fpr[31] <= 0.0)",
+            "            ctx->fpr[12] = ppu_fp_single(ppu_fsub(ctx->fpr[12], ctx->fpr[31]));"
+          ]
+        ],
+        [
+          107054,
+          1,
+          [
+            "        ctx->fpr[31] = combat_mod_enabled(stalker_cooling)",
+            "            ? 0.0 : ppu_fp_single(ppu_fadd(ctx->fpr[31], ctx->fpr[1]));"
+          ]
+        ],
+        [
+          122813,
+          1,
+          [
+            "        ctx->fpr[31] = combat_mod_enabled(tank_cooling)",
+            "            ? 0.0 : ppu_fp_single(ppu_fadd(ctx->fpr[31], ctx->fpr[1]));"
+          ]
+        ],
+        [
+          123668,
+          1,
+          [
+            "        ctx->fpr[31] = combat_mod_enabled(tank_cooling)",
+            "            ? 0.0 : ppu_fp_single(ppu_fadd(ctx->fpr[31], ctx->fpr[1]));"
+          ]
+        ]
+      ]
+    },
+    "project/stubs.cpp": {
+      "base_sha256": "92509612fc335c60d834d2508ae3f2cda0f5cd5c982169dcb003332e41a72fb9",
+      "final_sha256": "2c2b85811695f805459b6dfc2c8fe051ec5db52586fdf3a00ecad5ef8968b700",
+      "edits": [
+        [
+          16,
+          0,
+          [
+            "#include <atomic>",
+            "#include \"rfom_movement_menu.h\""
+          ]
+        ],
+        [
+          926,
+          0,
+          [
+            "static uint32_t s_noclip_owner = 0;",
+            "",
+            "static void restore_ground_position(uint32_t player, const SafePos& spot, float fx, float fz, float fy)",
+            "{",
+            "    const float eye_x = ml_rdf(player + 0x340) - fx;",
+            "    const float eye_z = ml_rdf(player + 0x344) - fz;",
+            "    const float eye_y = ml_rdf(player + 0x348) - fy;",
+            "    const float z = spot.z + 0.3f;",
+            "    ml_wrf(player + 0x3E80, spot.x); ml_wrf(player + 0x3E84, z); ml_wrf(player + 0x3E88, spot.y);",
+            "    ml_wrf(player + 0x340, spot.x + eye_x); ml_wrf(player + 0x344, z + eye_z); ml_wrf(player + 0x348, spot.y + eye_y);",
+            "    for (uint32_t offset : { 0xF0u, 0xF4u, 0xF8u, 0x110u, 0x114u, 0x118u }) ml_wrf(player + offset, 0.0f);",
+            "}",
+            "extern \"C\" void rfpf_toast(const char* title, const char* text, char badge);"
+          ]
+        ],
+        [
+          933,
+          1,
+          [
+            "    const bool ground = s_noclip_owner != player && vm_read8(player + 0x1EB) == 1;"
+          ]
+        ],
+        [
+          994,
+          0,
+          [
+            "    static SafePos bookmark{};",
+            "    static uint32_t bookmark_owner = 0;",
+            "    const PositionAction action = rfom_position_action.exchange(PositionAction::None, std::memory_order_relaxed);",
+            "    if (action == PositionAction::Mark) {",
+            "        if (ground && rfom_movement_allowed(player) && std::isfinite(fx) && std::isfinite(fz) && std::isfinite(fy)) {",
+            "            bookmark = {fx, fz, fy, now};",
+            "            bookmark_owner = player;",
+            "            rfpf_toast(\"Mod menu\", \"Posicao marcada\", 0);",
+            "        } else rfpf_toast(\"Mod menu\", \"Marque uma posicao em terra firme\", 0);",
+            "    } else if (action == PositionAction::Return) {",
+            "        if (bookmark_owner == player && rfom_movement_allowed(player)) {",
+            "            restore_ground_position(player, bookmark, fx, fz, fy);",
+            "            rfpf_toast(\"Mod menu\", \"Voltou a posicao marcada\", 0);",
+            "            return;",
+            "        }",
+            "        rfpf_toast(\"Mod menu\", \"Marque uma posicao nesta fase primeiro\", 0);",
+            "    }"
+          ]
+        ],
+        [
+          1006,
+          5,
+          [
+            "        restore_ground_position(player, sp, fx, fz, fy);"
+          ]
+        ],
+        [
+          1024,
+          0,
+          [
+            "static std::atomic<uint32_t> s_rapid_local_player{0};",
+            "extern \"C\" bool rfom_lethal_player_hit(uint32_t event, uint32_t target, uint32_t toc)",
+            "{",
+            "    constexpr auto hit_kill = static_cast<CombatMod>(1u << 17);",
+            "    if (!combat_mod_enabled(hit_kill) || !event || !target || toc != 0x006BD648) return false;",
+            "    if (g_rfom_scripted || GetTickCount64() - g_rfom_play_ms > 250) return false;",
+            "",
+            "    const uint32_t player = s_rapid_local_player.load(std::memory_order_relaxed);",
+            "    if (!player) return false;",
+            "    const uint32_t player_moby = vm_read32(player + 0x3E94);",
+            "    if (!player_moby || target == player_moby) return false;",
+            "",
+            "    const uint32_t damage_module = vm_read32(toc - 0x78FC);",
+            "    const uint32_t table = vm_read32(damage_module - 0x7FDC);",
+            "    const uint32_t entries = vm_read32(table);",
+            "    const uint32_t limit = vm_read32(table + 0x10);",
+            "    if (!entries || target < entries) return false;",
+            "    const uint32_t displacement = target - entries;",
+            "    if (displacement % 0x180 || displacement / 0x180 >= limit || !vm_read32(target + 0x40)) return false;",
+            "    if ((vm_read32(target + 0x64) & 0xFFFF) != displacement / 0x180) return false;",
+            "    const uint32_t player_handle = vm_read32(player_moby + 0x64);",
+            "    const uint32_t source_handle = vm_read32(event + 0x0C);",
+            "    if (!player_handle || player_handle == 0xFFFFFFFF || !source_handle ||",
+            "        source_handle == 0xFFFFFFFF) return false;",
+            "",
+            "    // Resolve the impact source with the same table as the game's damage dispatcher.",
+            "    const uint32_t index = source_handle & 0xFFFF;",
+            "    if (index >= limit) return false;",
+            "    const uint32_t source = entries + index * 0x180;",
+            "    if (vm_read32(source + 0x64) != source_handle) return false;",
+            "    if (source != player_moby && vm_read32(source + 0x58) != player_handle) return false;",
+            "",
+            "    static std::atomic<unsigned> logged{0};",
+            "    if (logged.load(std::memory_order_relaxed) < 24 &&",
+            "        logged.fetch_add(1, std::memory_order_relaxed) < 24) {",
+            "        if (FILE* log = fopen(\"logs\\\\hit-kill.txt\", \"a\")) {",
+            "            fprintf(log, \"Lethal player hit: target class %04X, damage type %04X\\n\",",
+            "                    unsigned(vm_read16(target + 0x52)), unsigned(vm_read16(event)));",
+            "            fclose(log);",
+            "        }",
+            "    }",
+            "    return true;",
+            "}",
+            "",
+            "extern \"C\" bool rfom_rapid_local_owner(uint32_t owner)",
+            "{",
+            "    return owner && owner == s_rapid_local_player.load(std::memory_order_relaxed);",
+            "}",
+            "extern \"C\" bool rfom_movement_allowed(uint32_t player)",
+            "{",
+            "    return rfom_rapid_local_owner(player) && !g_rfom_scripted && vm_read8(player + 0x3F07) != 1;",
+            "}",
+            "extern \"C\" volatile int g_rfom_input_block;",
+            "",
+            "// The game and the overlay use the camera update heartbeat to transfer input ownership.",
+            "static std::atomic<ULONGLONG> s_free_camera_update{0};",
+            "",
+            "extern \"C\" bool rfom_free_camera_active()",
+            "{",
+            "    const auto last_update = s_free_camera_update.load(std::memory_order_relaxed);",
+            "    return combat_mod_enabled(free_camera) && last_update &&",
+            "           GetTickCount64() - last_update <= 250;",
+            "}",
+            "",
+            "extern \"C\" bool rfom_free_camera_ui_blocked();",
+            "",
+            "// Called on the camera update path before deriving view and projection matrices.",
+            "extern \"C\" void rfom_free_camera_transform(uint32_t cameras, uint32_t matrix)",
+            "{",
+            "    static uint32_t active_cameras = 0;",
+            "    static ULONGLONG last = 0;",
+            "    static float pose[4][3]{};",
+            "    const auto now = GetTickCount64();",
+            "    if (!combat_mod_enabled(free_camera) || g_rfom_scripted || now - g_rfom_play_ms > 250) {",
+            "        active_cameras = 0;",
+            "        s_free_camera_update.store(0, std::memory_order_relaxed);",
+            "        return;",
+            "    }",
+            "    const uint32_t camera = s_rfom_view_cam;",
+            "    if (!camera || (camera != cameras + 0x1180 && camera != cameras + 0x1480)) return;",
+            "    if (active_cameras != cameras || now - last > 1000) {",
+            "        for (unsigned row = 0; row < 4; ++row) {",
+            "            for (unsigned axis = 0; axis < 3; ++axis) {",
+            "                const float value = ml_rdf(matrix + row * 16 + axis * 4);",
+            "                if (!std::isfinite(value)) return;",
+            "                pose[row][axis] = value;",
+            "            }",
+            "        }",
+            "        for (unsigned row = 0; row < 3; ++row) {",
+            "            const float squared = pose[row][0] * pose[row][0] + pose[row][1] * pose[row][1] + pose[row][2] * pose[row][2];",
+            "            if (squared < 0.75f || squared > 1.25f) return;",
+            "        }",
+            "        active_cameras = cameras;",
+            "        InterlockedExchange(&g_kbm_ml_dx, 0);",
+            "        InterlockedExchange(&g_kbm_ml_dy, 0);",
+            "        last = now;",
+            "    }",
+            "    s_free_camera_update.store(now, std::memory_order_relaxed);",
+            "    const float elapsed = float((std::min)(now - last, 50ull)) / 1000.0f;",
+            "    last = now;",
+            "    DWORD pid = 0;",
+            "    const HWND focused = GetForegroundWindow();",
+            "    if (focused) GetWindowThreadProcessId(focused, &pid);",
+            "    const long dx = InterlockedExchange(&g_kbm_ml_dx, 0);",
+            "    const long dy = InterlockedExchange(&g_kbm_ml_dy, 0);",
+            "    if (!rfom_free_camera_ui_blocked() && pid == GetCurrentProcessId()) {",
+            "        const auto pressed = [](int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; };",
+            "        const float speed = pressed(VK_SHIFT) ? 14.0f : 6.0f;",
+            "        const float side = float((pressed('A') || pressed('J')) -",
+            "                                 (pressed('D') || pressed('L'))) * elapsed * speed;",
+            "        const float front = float((pressed('W') || pressed('I')) -",
+            "                                  (pressed('S') || pressed('K'))) * elapsed * speed;",
+            "        for (unsigned axis = 0; axis < 3; ++axis)",
+            "            pose[3][axis] += pose[0][axis] * side + pose[2][axis] * front;",
+            "        pose[3][1] += float((pressed(VK_SPACE) || pressed('U')) -",
+            "                            (pressed('C') || pressed('O'))) * elapsed * speed;",
+            "",
+            "        const float mouse_yaw = g_kbm_capture ? float(std::clamp(dx, -250L, 250L)) * 0.0025f : 0.0f;",
+            "        const float mouse_pitch = g_kbm_capture ? float(std::clamp(dy, -250L, 250L)) * 0.0025f : 0.0f;",
+            "        const float yaw = float(pressed(VK_LEFT) - pressed(VK_RIGHT)) * elapsed * 1.8f - mouse_yaw;",
+            "        const float pitch = float(pressed(VK_UP) - pressed(VK_DOWN)) * elapsed * 1.8f - mouse_pitch;",
+            "        const float yc = std::cos(yaw), ys = std::sin(yaw);",
+            "        for (unsigned row = 0; row < 3; ++row) {",
+            "            const float x = pose[row][0], z = pose[row][2];",
+            "            pose[row][0] = yc * x + ys * z;",
+            "            pose[row][2] = yc * z - ys * x;",
+            "        }",
+            "        const float pc = std::cos(pitch), ps = std::sin(pitch);",
+            "        for (unsigned axis = 0; axis < 3; ++axis) {",
+            "            const float up = pose[1][axis], front_axis = pose[2][axis];",
+            "            pose[1][axis] = pc * up - ps * front_axis;",
+            "            pose[2][axis] = pc * front_axis + ps * up;",
+            "        }",
+            "    }",
+            "    for (unsigned row = 0; row < 4; ++row)",
+            "        for (unsigned axis = 0; axis < 3; ++axis)",
+            "            ml_wrf(matrix + row * 16 + axis * 4, pose[row][axis]);",
+            "}",
+            "",
+            "extern \"C\" bool rfom_noclip_step(uint32_t player)",
+            "{",
+            "    static SafePos position{};",
+            "    static float eye_offset[3]{};",
+            "    const auto disable = [] {",
+            "        rfom_combat_mods.fetch_and(~static_cast<unsigned>(noclip), std::memory_order_relaxed);",
+            "        s_noclip_owner = 0;",
+            "    };",
+            "    // Let the normal collision and gravity resume at the current position.",
+            "    if (!combat_mod_enabled(noclip)) {",
+            "        s_noclip_owner = 0;",
+            "        return false;",
+            "    }",
+            "    if (rfom_free_camera_active()) {",
+            "        position.t = GetTickCount64();",
+            "        return false;",
+            "    }",
+            "    if (!rfom_movement_allowed(player) || (s_noclip_owner && s_noclip_owner != player)) {",
+            "        if (s_noclip_owner) disable();",
+            "        return false;",
+            "    }",
+            "    const ULONGLONG now = GetTickCount64();",
+            "    const float feet[3] = {ml_rdf(player + 0x3E80), ml_rdf(player + 0x3E84), ml_rdf(player + 0x3E88)};",
+            "    if (!s_noclip_owner) {",
+            "        if (!std::isfinite(feet[0]) || !std::isfinite(feet[1]) || !std::isfinite(feet[2])) {",
+            "            disable();",
+            "            rfpf_toast(\"Noclip\", \"Posicao indisponivel.\", 0);",
+            "            return false;",
+            "        }",
+            "        for (unsigned axis = 0; axis < 3; ++axis)",
+            "            eye_offset[axis] = ml_rdf(player + 0x340 + axis * 4) - feet[axis];",
+            "        position = {feet[0], feet[1], feet[2], now};",
+            "        s_noclip_owner = player;",
+            "    }",
+            "",
+            "    const ULONGLONG elapsed = now - position.t;",
+            "    position.t = now;",
+            "    const HWND focused = GetForegroundWindow();",
+            "    DWORD focused_pid = 0;",
+            "    if (focused) GetWindowThreadProcessId(focused, &focused_pid);",
+            "    if (!g_rfom_input_block && elapsed <= 150 && focused_pid == GetCurrentProcessId()) {",
+            "        const auto pressed = [](int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; };",
+            "        const float forward = float(pressed('W') - pressed('S'));",
+            "        const float right = float(pressed('A') - pressed('D'));",
+            "        const float up = float(pressed(VK_SPACE) - pressed('C'));",
+            "        // The aim matrix at +0x310 stores right, up, then forward.",
+            "        const float right_x = ml_rdf(player + 0x310), right_z = ml_rdf(player + 0x318);",
+            "        const float forward_x = ml_rdf(player + 0x330), forward_z = ml_rdf(player + 0x338);",
+            "        const float side_length = std::hypot(right_x, right_z);",
+            "        const float front_length = std::hypot(forward_x, forward_z);",
+            "        const float length = std::sqrt(forward * forward + right * right + up * up);",
+            "        if (length > 0.0f) {",
+            "            const float distance = float(elapsed < 50 ? elapsed : 50) * 0.008f / length;",
+            "            if (std::isfinite(side_length) && side_length > 0.001f) {",
+            "                position.x += right_x / side_length * right * distance;",
+            "                position.y += right_z / side_length * right * distance;",
+            "            }",
+            "            if (std::isfinite(front_length) && front_length > 0.001f) {",
+            "                position.x += forward_x / front_length * forward * distance;",
+            "                position.y += forward_z / front_length * forward * distance;",
+            "            }",
+            "            position.z += up * distance;",
+            "        }",
+            "    }",
+            "    const float xyz[3] = {position.x, position.z, position.y};",
+            "    for (unsigned axis = 0; axis < 3; ++axis) {",
+            "        ml_wrf(player + 0x3E80 + axis * 4, xyz[axis]);",
+            "        ml_wrf(player + 0x340 + axis * 4, xyz[axis] + eye_offset[axis]);",
+            "        ml_wrf(player + 0xF0 + axis * 4, 0.0f);",
+            "        ml_wrf(player + 0x110 + axis * 4, 0.0f);",
+            "    }",
+            "    return true;",
+            "}",
+            ""
+          ]
+        ],
+        [
+          1026,
+          0,
+          [
+            "    s_rapid_local_player.store(player, std::memory_order_relaxed);"
+          ]
+        ],
+        [
+          1146,
+          1,
+          [
+            "    if (rfom_free_camera_active() || !g_ml_mode || !player) return;"
+          ]
+        ]
+      ]
+    },
+    "recompiled_game/ppu_recomp_000.cpp": {
+      "base_sha256": "3e366182472e57bbb09de943b7b2e523c8fd94cd575267fbe2f8b85abd20eed2",
+      "final_sha256": "6c48a1132414034f47123bfcc301cfea0f344e1c11ec18238a776f924a0d97ee",
+      "edits": [
+        [
+          14328,
+          0,
+          [
+            "extern \"C\" void rfom_free_camera_transform(uint32_t cameras, uint32_t matrix);",
+            ""
+          ]
+        ],
+        [
+          14470,
+          0,
+          [
+            "        rfom_free_camera_transform(vm_read32(R_31 + 0x80), static_cast<uint32_t>(R_29));"
+          ]
+        ]
+      ]
+    },
+    "recompiled_game/ppu_recomp_004.cpp": {
+      "base_sha256": "7016e63f332a824330f0c859899f73dd157f009f6b83f9db89c78294db3491c0",
+      "final_sha256": "e5cc802a134af47f6c50a934d6d5bd5ce83a24ad5cdc0caa334b53ce4312c393",
+      "edits": [
+        [
+          8843,
+          1,
+          [
+            "static void native_damage_amount(ppu_context* ctx) {"
+          ]
+        ],
+        [
+          8878,
+          0,
+          [
+            "extern \"C\" bool rfom_lethal_player_hit(uint32_t event, uint32_t target, uint32_t toc);",
+            "",
+            "void func_0020B934(ppu_context* ctx) {",
+            "    const auto event = static_cast<uint32_t>(ctx->gpr[3]);",
+            "    const auto target = static_cast<uint32_t>(ctx->gpr[4]);",
+            "    const auto toc = static_cast<uint32_t>(ctx->gpr[2]);",
+            "    native_damage_amount(ctx);",
+            "    DRAIN_TRAMPOLINE(ctx);",
+            "    if (ctx->fpr[1] > 0.0 && ctx->fpr[1] < 1000000.0 &&",
+            "        rfom_lethal_player_hit(event, target, toc)) ctx->fpr[1] = 1000000.0;",
+            "}",
+            ""
+          ]
+        ]
+      ]
+    }
+  }
+}
